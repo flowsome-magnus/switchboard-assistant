@@ -15,6 +15,7 @@ dependencies = [
     "supabase>=2.3.0",
     "twilio>=8.10.0",
     "sendgrid>=6.10.0",
+    "pytest>=8.4.2",
 ]
 
 [project.optional-dependencies]
