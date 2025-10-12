@@ -24,6 +24,14 @@ class Employee:
     office: Optional[str]
     roles: List[str]
     status: str
+    
+    @property
+    def name(self) -> str:
+        return f"{self.first_name} {self.last_name}"
+    
+    @property
+    def phone(self) -> str:
+        return self.phone_number
 
 @dataclass
 class Department:
@@ -84,14 +92,43 @@ class SupabaseClient:
     async def search_employees(self, query: str = "", department: str = "") -> List[Employee]:
         """Search for employees by name, department, or role"""
         try:
-            # Use the database function for search
-            result = self.client.rpc('search_employees', {
-                'p_query': query,
-                'p_department': department
-            }).execute()
+            # Handle full name searches by doing multiple searches and combining results
+            all_employees = []
+            
+            if query and ' ' in query.strip():
+                # If it's a full name, search for each part separately and combine results
+                name_parts = query.strip().split()
+                for part in name_parts:
+                    result = self.client.rpc('search_employees', {
+                        'p_query': part,
+                        'p_department': department
+                    }).execute()
+                    
+                    for row in result.data:
+                        # Check if this employee matches the full name
+                        full_name = f"{row['first_name']} {row['last_name']}".lower()
+                        if query.lower() in full_name:
+                            all_employees.append(row)
+                
+                # Remove duplicates based on employee ID
+                seen_ids = set()
+                unique_employees = []
+                for emp in all_employees:
+                    if emp['id'] not in seen_ids:
+                        seen_ids.add(emp['id'])
+                        unique_employees.append(emp)
+                
+                result_data = unique_employees
+            else:
+                # Use the regular database function for single word searches
+                result = self.client.rpc('search_employees', {
+                    'p_query': query,
+                    'p_department': department
+                }).execute()
+                result_data = result.data
             
             employees = []
-            for row in result.data:
+            for row in result_data:
                 employee = Employee(
                     id=row['id'],
                     first_name=row['first_name'],

@@ -138,6 +138,44 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+-- Function to search employees by separate first and last name parts
+CREATE OR REPLACE FUNCTION search_employees_by_name_parts(p_first_name TEXT DEFAULT '', p_last_name TEXT DEFAULT '', p_department TEXT DEFAULT '')
+RETURNS TABLE (
+    id UUID,
+    first_name TEXT,
+    last_name TEXT,
+    email TEXT,
+    phone_number TEXT,
+    department_id UUID,
+    department_name TEXT,
+    office TEXT,
+    roles TEXT[],
+    status TEXT
+) AS $$
+BEGIN
+    RETURN QUERY
+    SELECT 
+        e.id,
+        e.first_name,
+        e.last_name,
+        e.email,
+        e.phone_number,
+        e.department_id,
+        d.name as department_name,
+        e.office,
+        e.roles,
+        e.status
+    FROM employees e
+    LEFT JOIN departments d ON e.department_id = d.id
+    WHERE 
+        (p_first_name = '' OR e.first_name ILIKE '%' || p_first_name || '%')
+    AND (p_last_name = '' OR e.last_name ILIKE '%' || p_last_name || '%')
+    AND (p_department = '' OR d.name ILIKE '%' || p_department || '%')
+    AND e.status = 'available'
+    ORDER BY d.routing_priority ASC, e.first_name ASC;
+END;
+$$ LANGUAGE plpgsql;
+
 CREATE OR REPLACE FUNCTION is_employee_available(p_employee_id UUID)
 RETURNS BOOLEAN AS $$
 DECLARE
