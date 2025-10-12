@@ -301,7 +301,7 @@ class SwitchboardAssistant(Agent):
                 caller_phone=caller_phone or "Unknown",
                 employee_id=employee_id,
                 status="transferred" if transfer_result["status"] == "completed" else "failed",
-                notes=f"Warm transfer to {target_employee.name}: {transfer_result['status']}"
+                outcome=f"Warm transfer to {target_employee.name}: {transfer_result['status']}"
             )
             
             if transfer_result["status"] == "completed":
