@@ -13,87 +13,81 @@ from livekit.plugins import openai, deepgram, silero
 from datetime import datetime
 import os
 
+from agent_instructions import instructions as agent_instructions
+
 # Load environment variables
 load_dotenv(".env")
 
 class Assistant(Agent):
-    """Basic voice assistant with Airbnb booking capabilities."""
+    """Basic switchboard operator talking and transferring calls as well as taking messages."""
 
     def __init__(self):
         super().__init__(
-            instructions="""You are a helpful and friendly Airbnb voice assistant.
-            You can help users search for Airbnbs in different cities and book their stays.
-            Keep your responses concise and natural, as if having a conversation."""
+            instructions=agent_instructions
         )
 
-        # Mock Airbnb database
-        self.airbnbs = {
-            "san francisco": [
-                {
-                    "id": "sf001",
-                    "name": "Cozy Downtown Loft",
-                    "address": "123 Market Street, San Francisco, CA",
-                    "price": 150,
-                    "amenities": ["WiFi", "Kitchen", "Workspace"],
-                },
-                {
-                    "id": "sf002",
-                    "name": "Victorian House with Bay Views",
-                    "address": "456 Castro Street, San Francisco, CA",
-                    "price": 220,
-                    "amenities": ["WiFi", "Parking", "Washer/Dryer", "Bay Views"],
-                },
-                {
-                    "id": "sf003",
-                    "name": "Modern Studio near Golden Gate",
-                    "address": "789 Presidio Avenue, San Francisco, CA",
-                    "price": 180,
-                    "amenities": ["WiFi", "Kitchen", "Pet Friendly"],
-                },
-            ],
-            "new york": [
-                {
-                    "id": "ny001",
-                    "name": "Brooklyn Brownstone Apartment",
-                    "address": "321 Bedford Avenue, Brooklyn, NY",
-                    "price": 175,
-                    "amenities": ["WiFi", "Kitchen", "Backyard Access"],
-                },
-                {
-                    "id": "ny002",
-                    "name": "Manhattan Skyline Penthouse",
-                    "address": "555 Fifth Avenue, Manhattan, NY",
-                    "price": 350,
-                    "amenities": ["WiFi", "Gym", "Doorman", "City Views"],
-                },
-                {
-                    "id": "ny003",
-                    "name": "Artsy East Village Loft",
-                    "address": "88 Avenue A, Manhattan, NY",
-                    "price": 195,
-                    "amenities": ["WiFi", "Washer/Dryer", "Exposed Brick"],
-                },
-            ],
-            "los angeles": [
-                {
-                    "id": "la001",
-                    "name": "Venice Beach Bungalow",
-                    "address": "234 Ocean Front Walk, Venice, CA",
-                    "price": 200,
-                    "amenities": ["WiFi", "Beach Access", "Patio"],
-                },
-                {
-                    "id": "la002",
-                    "name": "Hollywood Hills Villa",
-                    "address": "777 Mulholland Drive, Los Angeles, CA",
-                    "price": 400,
-                    "amenities": ["WiFi", "Pool", "City Views", "Hot Tub"],
-                },
-            ],
+        # Mock employees database - flat structure with explicit department
+        self.employees = {
+            "e001": {
+                "name": "Magnus Edin",
+                "department": "Management",
+                "phone": "+46702778411",
+                "office": "Östersund",
+                "email": "magnus@flowsome.se",
+                "roles": ["CEO", "Owner"]
+            },
+            "e002": {
+                "name": "Kurt Olsson",
+                "department": "Management",
+                "phone": "+46702778412",
+                "office": "Östersund",
+                "email": "kurt@flowsome.se",
+                "roles": ["CTO", "Teknikchef"]
+            },
+            "e003": {
+                "name": "Warren Buffett",
+                "department": "Management",
+                "phone": "+46702778413",
+                "office": "Östersund",
+                "email": "warren@flowsome.se",
+                "roles": ["CFO"]
+            },
+            "e004": {
+                "name": "Anna Nilsson",
+                "department": "Sales",
+                "phone": "+46702778414",
+                "office": "Östersund",
+                "email": "anna@flowsome.se",
+                "roles": ["Sales Manager", "Försäljningschef"]
+            },
+            "e005": {
+                "name": "Peter Svensson",
+                "department": "Sales",
+                "phone": "+46702778415",
+                "office": "Stockholm",
+                "email": "peter@flowsome.se",
+                "roles": ["Sales Representative", "Försäljningsassistent"]
+            },
+            "e006": {
+                "name": "Jörgen Johansson",
+                "department": "Support",
+                "phone": "+46702778416",
+                "office": "Östersund",
+                "email": "jorgen@flowsome.se",
+                "roles": ["Support Engineer", "Supporttekniker"]
+            },
+            "e007": {
+                "name": "Johan Nilsson",
+                "department": "Support",
+                "phone": "+46702778417",
+                "office": "Stockholm",
+                "email": "johan@flowsome.se",
+                "roles": ["Support Engineer", "Supporttekniker"]
+            }
         }
 
-        # Track bookings
-        self.bookings = []
+        # Track transfers
+        self.transfers = []
 
     @function_tool
     async def get_current_date_and_time(self, context: RunContext) -> str:
@@ -102,86 +96,87 @@ class Assistant(Agent):
         return f"The current date and time is {current_datetime}"
 
     @function_tool
-    async def search_airbnbs(self, context: RunContext, city: str) -> str:
-        """Search for available Airbnbs in a city.
+    async def search_person(self, context: RunContext, department: str) -> str:
+        """Search for available people in a department.
 
         Args:
-            city: The city name to search for Airbnbs (e.g., 'San Francisco', 'New York', 'Los Angeles')
+            department: The department name to search for people (e.g., 'Ledningen', 'Försäljning', 'Support')
         """
-        city_lower = city.lower()
+        # Map department names to the correct keys
+        department_mapping = {
+            'management': 'Management',
+            'ledningen': 'Management', 
+            'sales': 'Sales',
+            'försäljning': 'Sales',
+            'support': 'Support'
+        }
+        
+        department_key = department_mapping.get(department.lower())
+        if not department_key:
+            return f"Sorry, I don't have any people in the {department} department at the moment. Available departments are: Management, Sales, and Support."
 
-        if city_lower not in self.airbnbs:
-            return f"Sorry, I don't have any Airbnb listings for {city} at the moment. Available cities are: San Francisco, New York, and Los Angeles."
+        # Filter employees by department
+        department_employees = [
+            (emp_id, emp_data) for emp_id, emp_data in self.employees.items() 
+            if emp_data['department'] == department_key
+        ]
+        
+        if not department_employees:
+            return f"Sorry, I don't have any people in the {department} department at the moment. Available departments are: Management, Sales, and Support."
 
-        listings = self.airbnbs[city_lower]
-        result = f"Found {len(listings)} Airbnbs in {city}:\n\n"
+        result = f"Found {len(department_employees)} people in the {department} department:\n\n"
 
-        for listing in listings:
-            result += f"• {listing['name']}\n"
-            result += f"  Address: {listing['address']}\n"
-            result += f"  Price: ${listing['price']} per night\n"
-            result += f"  Amenities: {', '.join(listing['amenities'])}\n"
-            result += f"  ID: {listing['id']}\n\n"
+        for emp_id, employee in department_employees:
+            result += f"• {employee['name']}\n"
+            result += f"  Phone: {employee['phone']}\n"
+            result += f"  Office: {employee['office']}\n"
+            result += f"  Email: {employee['email']}\n"
+            result += f"  Roles: {', '.join(employee['roles'])}\n"
+            result += f"  ID: {emp_id}\n\n"
 
         return result
 
     @function_tool
-    async def book_airbnb(self, context: RunContext, airbnb_id: str, guest_name: str, check_in_date: str, check_out_date: str) -> str:
-        """Book an Airbnb.
+    async def make_transfer(self, context: RunContext, person_id: str, department: str) -> str:
+        """Make a transfer to a person in a department.
 
         Args:
-            airbnb_id: The ID of the Airbnb to book (e.g., 'sf001')
-            guest_name: Name of the guest making the booking
-            check_in_date: Check-in date (e.g., 'January 15, 2025')
-            check_out_date: Check-out date (e.g., 'January 20, 2025')
+            person_id: The ID of the person to transfer to (e.g., 'e001')
+            department: The department to transfer to (e.g., 'Management', 'Sales', 'Support')
         """
-        # Find the Airbnb
-        airbnb = None
-        for city_listings in self.airbnbs.values():
-            for listing in city_listings:
-                if listing['id'] == airbnb_id:
-                    airbnb = listing
-                    break
-            if airbnb:
-                break
+        # Find the person directly by ID
+        if person_id not in self.employees:
+            return f"Sorry, I couldn't find a person with ID {person_id}. Please search for available people first."
 
-        if not airbnb:
-            return f"Sorry, I couldn't find an Airbnb with ID {airbnb_id}. Please search for available listings first."
+        found_person = self.employees[person_id]
 
-        # Create booking
-        booking = {
-            "confirmation_number": f"BK{len(self.bookings) + 1001}",
-            "airbnb_name": airbnb['name'],
-            "address": airbnb['address'],
-            "guest_name": guest_name,
-            "check_in": check_in_date,
-            "check_out": check_out_date,
-            "total_price": airbnb['price'],
+        # Create transfer
+        transfer = {
+            "confirmation_number": f"TR{len(self.transfers) + 1001}",
+            "person_name": found_person['name'],
+            "department": found_person['department'],
         }
 
-        self.bookings.append(booking)
+        self.transfers.append(transfer)
 
-        result = f"✓ Booking confirmed!\n\n"
-        result += f"Confirmation Number: {booking['confirmation_number']}\n"
-        result += f"Property: {booking['airbnb_name']}\n"
-        result += f"Address: {booking['address']}\n"
-        result += f"Guest: {booking['guest_name']}\n"
-        result += f"Check-in: {booking['check_in']}\n"
-        result += f"Check-out: {booking['check_out']}\n"
-        result += f"Nightly Rate: ${booking['total_price']}\n\n"
-        result += f"You'll receive a confirmation email shortly. Have a great stay!"
+        result = f"✓ Transfer confirmed!\n\n"
+        result += f"Confirmation Number: {transfer['confirmation_number']}\n"
+        result += f"Person: {transfer['person_name']}\n"
+        result += f"Department: {transfer['department']}\n\n"
+        result += f"You'll receive a confirmation email shortly. Have a great day!"
 
-        return result        
+        return result
 
 async def entrypoint(ctx: agents.JobContext):
     """Entry point for the agent."""
 
     # Configure the voice pipeline with the essentials
     session = AgentSession(
-        stt=deepgram.STT(model="nova-2"),
-        llm=openai.LLM(model=os.getenv("LLM_CHOICE", "gpt-4.1-mini")),
-        tts=openai.TTS(voice="echo"),
-        vad=silero.VAD.load(),
+        #stt=deepgram.STT(model="nova-2"),
+        llm=openai.realtime.RealtimeModel(voice="alloy", temperature=0.8),
+        #llm=openai.LLM(model=os.getenv("LLM_CHOICE", "gpt-4.1-mini")),
+        #tts=openai.TTS(voice="echo"),
+        #vad=silero.VAD.load(),
     )
 
     # Start the session
@@ -192,9 +187,12 @@ async def entrypoint(ctx: agents.JobContext):
 
     # Generate initial greeting
     await session.generate_reply(
-        instructions="Greet the user warmly and ask how you can help."
+        instructions="Hälsa användaren vänligt och fråga hur du kan hjälpa."
     )
 
 if __name__ == "__main__":
     # Run the agent
-    agents.cli.run_app(agents.WorkerOptions(entrypoint_fnc=entrypoint))
+    agents.cli.run_app(agents.WorkerOptions(
+        entrypoint_fnc=entrypoint,
+        agent_name="basic-agent"
+    ))

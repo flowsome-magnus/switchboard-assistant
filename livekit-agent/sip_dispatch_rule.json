@@ -1,0 +1,17 @@
+{
+  "rule": {
+    "dispatchRuleIndividual": {
+      "roomNamePrefix": "call-",
+      "roomConfig": {
+        "agents": [
+          {
+            "agentName": "switchboard-agent"
+          }
+        ]
+      }
+    }
+  },
+  "trunk_ids": [],
+  "hide_phone_number": false
+}
+

@@ -1,11 +1,15 @@
-# LiveKit Voice Agent
+# Switchboard Assistant - LiveKit Voice Agent
 
-A LiveKit-powered voice AI agent framework that demonstrates how to build realtime conversational AI with MCP (Model Context Protocol) server integration.
+A comprehensive voice AI agent framework built with LiveKit Agents that demonstrates real-time conversational AI with MCP (Model Context Protocol) server integration for switchboard operations.
 
 ## Features
 
 - 🎤 Natural voice conversations with low latency
-- 🔄 Real-time voice interaction with interruption handling
+- 🔄 Warm transfer capabilities to human employees
+- 📞 SIP integration for phone calls
+- 💬 Message taking and delivery via SMS/email
+- 🗄️ Database integration with Supabase
+- 🌐 Web management interface
 - 🛠️ Tool integration via MCP servers
 - 🎯 Multiple provider options (OpenAI, Deepgram, Cartesia, etc.)
 - 🔌 Extensible architecture for custom tools and agents
@@ -13,21 +17,54 @@ A LiveKit-powered voice AI agent framework that demonstrates how to build realti
 ## Prerequisites
 
 - Python 3.9 or later
+- Node.js 18+ (for frontend)
 - API Keys:
   - OpenAI API key
   - Deepgram API key
   - LiveKit credentials (optional - only if deploying to LiveKit Cloud)
+  - Twilio account (for SIP/SMS)
+  - Supabase account (for database)
+
+## Project Structure
+
+```
+├── agent/                    # LiveKit agent implementations
+├── backend/                  # FastAPI backend service
+├── frontend/                 # Next.js web interface
+├── supabase/                 # Database migrations and functions
+├── docs/                     # Documentation
+├── db/                       # Database client and utilities
+├── messaging/                # SMS and email services
+├── livekit_basic_agent.py    # Basic switchboard agent
+├── livekit_mcp_agent.py      # MCP-enabled agent
+└── agent_instructions.py     # Agent behavior configuration
+```
 
 ## Quick Start
 
-### 1. Install Dependencies
+### 1. Set Up Supabase Database (Required)
+
+The agent now includes database integration for employee search, message taking, and call logging. You must set up Supabase first:
+
+```bash
+# Follow the detailed instructions in SUPABASE_SETUP.md
+cp env.example .env
+# Edit .env with your Supabase credentials
+```
+
+**Quick Supabase Setup:**
+1. Create a project at [supabase.com](https://supabase.com)
+2. Run the SQL scripts in `supabase/schema.sql` and `supabase/sample_data.sql`
+3. Add your credentials to `.env`
+
+### 2. Install Dependencies
 
 ```bash
 # Install dependencies using UV
 uv sync
 ```
 
-### 2. Set Up Environment Variables
+### 3. Set Up Environment Variables
 
 Copy `.env.example` to `.env` and fill in your credentials:
 
@@ -44,7 +81,7 @@ cp .env.example .env
 - `LIVEKIT_API_KEY` - LiveKit API key
 - `LIVEKIT_API_SECRET` - LiveKit API secret
 
-### 3. Download Required Model Files
+### 4. Download Required Model Files
 
 Before first run, download the required model files (Silero VAD, turn detector):
 
@@ -56,9 +93,14 @@ uv run python livekit_basic_agent.py download-files
 uv run python livekit_mcp_agent.py download-files
 ```
 
-### 4. Run the Agent
+### 5. Run the Agent
 
 ```bash
+# Enhanced switchboard agent (with database integration)
+source .venv/bin/activate
+source .env
+python livekit_switchboard_agent.py dev
+
 # Basic agent (minimal configuration)
 uv run python livekit_basic_agent.py console
 
