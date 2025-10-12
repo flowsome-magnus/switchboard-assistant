@@ -19,7 +19,7 @@ class SMSService:
         """Initialize SMS service with Twilio credentials."""
         self.account_sid = os.getenv("TWILIO_ACCOUNT_SID")
         self.auth_token = os.getenv("TWILIO_AUTH_TOKEN")
-        self.sms_number = os.getenv("TWILIO_SMS_NUMBER")
+        self.sms_number = os.getenv("TWILIO_SMS_NUMBER") or os.getenv("TWILIO_PHONE_NUMBER")
         
         if not all([self.account_sid, self.auth_token, self.sms_number]):
             logger.warning("Twilio SMS credentials not configured. SMS functionality will be disabled.")

@@ -354,8 +354,7 @@ class SwitchboardAssistant(Agent):
                 from_caller=caller_phone or "Unknown",
                 to_employee_id=employee_id,
                 message_text=message_text,
-                delivered_via=["voice"],  # Will be updated when delivered via SMS/email
-                delivery_details={"taken_by": "switchboard_agent"}
+                delivered_via=["voice"]  # Will be updated when delivered via SMS/email
             )
             
             # Deliver message via SMS and email
@@ -400,7 +399,7 @@ class SwitchboardAssistant(Agent):
                 caller_phone=caller_phone or "Unknown",
                 employee_id=employee_id,
                 status="completed",
-                notes=f"Message taken for {target_employee.name}: {message_text[:100]}..."
+                outcome=f"Message taken for {target_employee.name}: {message_text[:100]}..."
             )
             
             result = f"✓ Message recorded and delivered!\n\n"
