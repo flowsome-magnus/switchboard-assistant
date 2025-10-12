@@ -12,13 +12,13 @@ INSERT INTO departments (name, description, routing_priority) VALUES
 -- Insert sample employees with your phone number for testing
 INSERT INTO employees (first_name, last_name, email, phone_number, department_id, office, roles, status) VALUES
 ('John', 'Smith', 'john.smith@company.com', '+46702778411', (SELECT id FROM departments WHERE name = 'Management'), 'A101', ARRAY['CEO', 'Executive'], 'available'),
-('Sarah', 'Johnson', 'sarah.johnson@company.com', '+46702778412', (SELECT id FROM departments WHERE name = 'Management'), 'A102', ARRAY['CTO', 'Technical Lead'], 'available'),
-('Mike', 'Davis', 'mike.davis@company.com', '+46702778413', (SELECT id FROM departments WHERE name = 'Sales'), 'B201', ARRAY['Sales Manager'], 'available'),
-('Lisa', 'Wilson', 'lisa.wilson@company.com', '+46702778414', (SELECT id FROM departments WHERE name = 'Sales'), 'B202', ARRAY['Sales Representative'], 'available'),
-('Tom', 'Brown', 'tom.brown@company.com', '+46702778415', (SELECT id FROM departments WHERE name = 'Support'), 'C301', ARRAY['Support Lead'], 'available'),
-('Emma', 'Garcia', 'emma.garcia@company.com', '+46702778416', (SELECT id FROM departments WHERE name = 'Support'), 'C302', ARRAY['Support Specialist'], 'available'),
-('David', 'Miller', 'david.miller@company.com', '+46702778417', (SELECT id FROM departments WHERE name = 'HR'), 'D401', ARRAY['HR Manager'], 'available'),
-('Anna', 'Taylor', 'anna.taylor@company.com', '+46702778418', (SELECT id FROM departments WHERE name = 'Finance'), 'E501', ARRAY['CFO', 'Finance Manager'], 'available');
+('Sarah', 'Johnson', 'sarah.johnson@company.com', '+46702778411', (SELECT id FROM departments WHERE name = 'Management'), 'A102', ARRAY['CTO', 'Technical Lead'], 'available'),
+('Mike', 'Davis', 'mike.davis@company.com', '+46702778411', (SELECT id FROM departments WHERE name = 'Sales'), 'B201', ARRAY['Sales Manager'], 'available'),
+('Lisa', 'Wilson', 'lisa.wilson@company.com', '+46702778411', (SELECT id FROM departments WHERE name = 'Sales'), 'B202', ARRAY['Sales Representative'], 'available'),
+('Tom', 'Brown', 'tom.brown@company.com', '+46702778411', (SELECT id FROM departments WHERE name = 'Support'), 'C301', ARRAY['Support Lead'], 'available'),
+('Emma', 'Garcia', 'emma.garcia@company.com', '+46702778411', (SELECT id FROM departments WHERE name = 'Support'), 'C302', ARRAY['Support Specialist'], 'available'),
+('David', 'Miller', 'david.miller@company.com', '+46702778411', (SELECT id FROM departments WHERE name = 'HR'), 'D401', ARRAY['HR Manager'], 'available'),
+('Anna', 'Taylor', 'anna.taylor@company.com', '+46702778411', (SELECT id FROM departments WHERE name = 'Finance'), 'E501', ARRAY['CFO', 'Finance Manager'], 'available');
 
 -- Insert company info
 INSERT INTO company_info (company_name, greeting_message, business_hours, settings) VALUES
