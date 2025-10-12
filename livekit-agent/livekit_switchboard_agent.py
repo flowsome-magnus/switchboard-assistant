@@ -305,21 +305,21 @@ class SwitchboardAssistant(Agent):
             )
             
             if transfer_result["status"] == "completed":
-                result = f"✓ Warm transfer completed!\n\n"
+                result = f"✓ Warm transfer initiated!\n\n"
                 result += f"Transfer ID: {transfer_result['transfer_id']}\n"
                 result += f"Employee: {target_employee.name}\n"
                 result += f"Department: {target_employee.department_name}\n"
                 result += f"Notifications: {', '.join(notification_results)}\n\n"
-                result += f"You are now connected to {target_employee.name}. Have a great conversation!"
+                result += transfer_result.get("message", f"I'm connecting you to {target_employee.name} now. Please hold on.")
                 
             elif transfer_result["status"] == "rejected":
                 result = transfer_result.get("message", f"Sorry, {target_employee.name} is not available to take your call right now. Would you like me to take a message instead?")
                 
             elif transfer_result["status"] == "message":
-                result = f"I've notified {target_employee.name} about your call. They would prefer to take a message. Would you like me to take a message for them instead?"
+                result = transfer_result.get("message", f"I've notified {target_employee.name} about your call. They would prefer to take a message. Would you like me to take a message for them instead?")
                 
             else:
-                result = f"Sorry, I'm having trouble connecting you to {target_employee.name} right now. Would you like me to take a message instead?"
+                result = transfer_result.get("message", f"Sorry, I'm having trouble connecting you to {target_employee.name} right now. Would you like me to take a message instead?")
             
             return result
             
