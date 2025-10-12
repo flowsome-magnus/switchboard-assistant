@@ -153,8 +153,8 @@ class SwitchboardAssistant(Agent):
             # Search employees
             logger.info(f"🔎 Searching database for employees with query='{query}', department='{department_key}'")
             employees = await self.db_client.search_employees(
-                query=query if query else None,
-                department=department_key
+                query=query if query else '',
+                department=department_key if department_key else ''
             )
             
             logger.info(f"📊 Database returned {len(employees) if employees else 0} employees")

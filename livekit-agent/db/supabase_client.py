@@ -120,7 +120,7 @@ class SupabaseClient:
                 
                 result_data = unique_employees
             else:
-                # Use the regular database function for single word searches
+                # Use the regular database function for single word searches or empty queries
                 result = self.client.rpc('search_employees', {
                     'p_query': query,
                     'p_department': department
