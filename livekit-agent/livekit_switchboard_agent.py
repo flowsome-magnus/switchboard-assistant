@@ -7,11 +7,13 @@ Enhanced switchboard agent with Supabase integration, warm transfers, and messag
 from dotenv import load_dotenv
 from livekit import agents, rtc
 
+
 # Load environment variables
 load_dotenv()
 from livekit.agents import Agent, AgentSession, RunContext
 from livekit.agents.llm import function_tool
-from livekit.plugins import openai, deepgram, silero
+from livekit.plugins import openai
+
 from datetime import datetime
 import os
 import logging
@@ -266,34 +268,41 @@ class SwitchboardAssistant(Agent):
                 "room_id": context.room.name if hasattr(context, 'room') else "caller_room"
             }
             
-            # Send transfer notification to employee
-            notification_results = []
-            
-            # Send SMS notification
-            if target_employee.phone:
-                sms_result = await sms_service.send_transfer_notification(
-                    employee_phone=target_employee.phone,
-                    caller_info=caller_info,
-                    employee_name=target_employee.name
-                )
-                notification_results.append(f"SMS: {'✓' if sms_result['success'] else '✗'}")
-            
-            # Send email notification
-            if target_employee.email:
-                email_result = await email_service.send_transfer_notification(
-                    employee_email=target_employee.email,
-                    caller_info=caller_info,
-                    employee_name=target_employee.name
-                )
-                notification_results.append(f"Email: {'✓' if email_result['success'] else '✗'}")
+            # No pre-call notifications - employee will be called directly via LiveKit SIP
             
             # Execute warm transfer
             caller_room_id = context.room.name if hasattr(context, 'room') else "caller_room"
+            
+            # Get conversation history for TransferAgent
+            conversation_history = f"""CALLER INFORMATION:
+                                        - Name: {caller_info['name']}
+                                        - Phone: {caller_info['phone']}
+                                        - Reason for calling: {caller_info['reason']}
+
+                                        CONVERSATION HISTORY:
+                                        """
+            if hasattr(context, 'session') and hasattr(context.session, 'chat_ctx'):
+                try:
+                    # Extract conversation history from the chat context
+                    chat_ctx = context.session.chat_ctx
+                    for msg in chat_ctx.items:
+                        if msg.role == "user":
+                            conversation_history += f"Caller: {msg.text_content}\n"
+                        elif msg.role == "assistant":
+                            conversation_history += f"Agent: {msg.text_content}\n"
+                except Exception as e:
+                    logger.error(f"Error extracting conversation history: {e}")
+                    conversation_history += "Caller requested transfer to employee."
+            else:
+                conversation_history += "Caller requested transfer to employee."
+            
             transfer_result = await warm_transfer_manager.execute_warm_transfer(
                 employee_phone=target_employee.phone,
                 caller_info=caller_info,
                 caller_room_id=caller_room_id,
-                session=context.session if hasattr(context, 'session') else None
+                session=context.session if hasattr(context, 'session') else None,
+                ctx=context,
+                conversation_history=conversation_history
             )
             
             # Log the transfer attempt
@@ -308,8 +317,7 @@ class SwitchboardAssistant(Agent):
                 result = f"✓ Warm transfer initiated!\n\n"
                 result += f"Transfer ID: {transfer_result['transfer_id']}\n"
                 result += f"Employee: {target_employee.name}\n"
-                result += f"Department: {target_employee.department_name}\n"
-                result += f"Notifications: {', '.join(notification_results)}\n\n"
+                result += f"Department: {target_employee.department_name}\n\n"
                 result += transfer_result.get("message", f"I'm connecting you to {target_employee.name} now. Please hold on.")
                 
             elif transfer_result["status"] == "rejected":
@@ -526,13 +534,9 @@ async def entrypoint(ctx: agents.JobContext):
     logger.info(f"🤖 Using LLM model: {llm_model}")
     
     session = AgentSession(
-        #stt=deepgram.STT(model="nova-2"),
-        llm=openai.realtime.RealtimeModel(voice="alloy", temperature=0.8),
-        #llm=openai.LLM(model=llm_model),
-        #tts=openai.TTS(voice="echo"),
-        #vad=silero.VAD.load(),
+        llm=openai.realtime.RealtimeModel(voice="alloy", temperature=0.8)
     )
-    logger.info(f"🎤 Voice pipeline configured with STT: nova-2, TTS: echo")
+    logger.info(f"🎤 Voice pipeline configured with OpenAI Realtime Model")
 
     # Create the assistant
     assistant = SwitchboardAssistant()
@@ -581,18 +585,14 @@ async def entrypoint(ctx: agents.JobContext):
         # Notify call start
         await assistant.on_call_start(ctx, caller_info.get("phone", ""))
 
-        # Generate initial greeting based on call type
+        # Generate initial greeting
         try:
             company_info = await assistant._get_company_info()
-            if is_sip_call:
-                greeting = f"Hello {caller_info.get('name', 'there')}, {company_info.greeting_message if company_info else 'Thank you for calling. How may I direct your call?'}"
-            else:
-                greeting = company_info.greeting_message if company_info else "Thank you for calling. How may I direct your call?"
+            greeting = company_info.greeting_message if company_info else "Thank you for calling. How may I direct your call?"
         except:
             greeting = "Thank you for calling. How may I direct your call?"
         
         logger.info(f"💬 Generated greeting: '{greeting}'")
-        logger.info(f"🌍 Language check - greeting contains Swedish: {'ja' in greeting.lower() or 'tack' in greeting.lower() or 'hej' in greeting.lower()}")
         
         await session.generate_reply(
             instructions=f"Greet the caller with: '{greeting}'"

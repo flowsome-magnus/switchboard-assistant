@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 """
-Update the SIP dispatch rule to include explicit agent dispatch
+Update the existing SIP dispatch rule to include agent dispatch
 """
 import asyncio
 import os
+import json
 from livekit import api
 
 async def update_dispatch_rule():
@@ -15,45 +16,55 @@ async def update_dispatch_rule():
     )
     
     try:
-        # First, get the current dispatch rule
-        dispatch_rules = await lkapi.sip.list_sip_dispatch_rule()
-        current_rule = None
-        
-        for rule in dispatch_rules:
-            if rule.sip_dispatch_rule_id == "SDR_ukD7wiTV2yrk":
-                current_rule = rule
-                break
-        
-        if not current_rule:
-            print("❌ Dispatch rule not found")
-            return
-            
-        print(f"✅ Found dispatch rule: {current_rule.sip_dispatch_rule_id}")
-        print(f"   Current rule type: {type(current_rule.rule).__name__}")
-        
-        # Try to update the rule with agent configuration
-        # Note: This might not work if the API doesn't support updating room_config
+        # First, delete the existing dispatch rule
+        print("🗑️  Deleting existing dispatch rule...")
         try:
-            updated_rule = await lkapi.sip.update_sip_dispatch_rule(
-                api.UpdateSIPDispatchRuleRequest(
-                    sip_dispatch_rule_id="SDR_ukD7wiTV2yrk",
-                    rule=api.SIPDispatchRule(
-                        dispatch_rule_individual=api.SIPDispatchRuleIndividual(
-                            room_prefix="call-"
-                        )
-                    )
+            await lkapi.sip.delete_sip_dispatch_rule(
+                api.DeleteSIPDispatchRuleRequest(
+                    sip_dispatch_rule_id="SDR_Gp4XBkW88D5g"
                 )
             )
-            print(f"✅ Updated dispatch rule: {updated_rule.sip_dispatch_rule_id}")
+            print("✅ Deleted existing dispatch rule")
         except Exception as e:
-            print(f"❌ Error updating dispatch rule: {e}")
-            print("   This might be expected if the API doesn't support room_config updates")
+            print(f"   Note: {e}")
+        
+        # Create new dispatch rule with agent configuration
+        print("🚀 Creating new dispatch rule with agent dispatch...")
+        
+        dispatch_rule = await lkapi.sip.create_sip_dispatch_rule(
+            api.CreateSIPDispatchRuleRequest(
+                rule=api.SIPDispatchRule(
+                    dispatch_rule_individual=api.SIPDispatchRuleIndividual(
+                        room_prefix="call-"
+                    )
+                ),
+                name="Switchboard Agent Dispatch Rule",
+                room_config=api.RoomConfiguration(
+                    agents=[
+                        api.RoomAgentDispatch(
+                            agent_name="switchboard-agent",
+                            metadata='{"source": "sip_dispatch_rule"}'
+                        )
+                    ]
+                ),
+                trunk_ids=[],  # Accept all trunks
+                hide_phone_number=False
+            )
+        )
+        
+        print(f"✅ Created new dispatch rule: {dispatch_rule.sip_dispatch_rule_id}")
+        print(f"   Rule type: Individual (Caller)")
+        print(f"   Room prefix: call-")
+        print(f"   Agent: switchboard-agent")
+        print(f"   Agent will be automatically dispatched to SIP call rooms!")
+        
+        return dispatch_rule.sip_dispatch_rule_id
         
     except Exception as e:
-        print(f"❌ Error: {e}")
+        print(f"❌ Error updating dispatch rule: {e}")
+        return None
     finally:
         await lkapi.aclose()
 
 if __name__ == "__main__":
     asyncio.run(update_dispatch_rule())
-

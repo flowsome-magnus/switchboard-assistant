@@ -20,6 +20,8 @@ class SIPCallRouter:
         self.active_rooms: Dict[str, Dict[str, Any]] = {}
         self.room_cleanup_task: Optional[asyncio.Task] = None
         self.cleanup_interval = 300  # 5 minutes
+        # Track participant identities for warm transfers
+        self.participant_identities: Dict[str, Dict[str, str]] = {}  # room_id -> {identity: participant_info}
     
     def is_sip_participant(self, participant: rtc.RemoteParticipant) -> bool:
         """Check if a participant is from a SIP call.
@@ -272,12 +274,18 @@ class SIPCallRouter:
         try:
             if room_name in self.active_rooms:
                 room_info = self.active_rooms[room_name]
-                room_info["participants"].append({
+                participant_info = {
                     "identity": participant.identity,
                     "name": participant.name,
                     "joined_at": datetime.now(),
                     "is_sip": self.is_sip_participant(participant)
-                })
+                }
+                room_info["participants"].append(participant_info)
+                
+                # Track participant identity for warm transfers
+                if room_name not in self.participant_identities:
+                    self.participant_identities[room_name] = {}
+                self.participant_identities[room_name][participant.identity] = participant_info
                 
                 await self.update_room_activity(room_name)
                 
@@ -302,6 +310,11 @@ class SIPCallRouter:
                     p for p in room_info["participants"] 
                     if p["identity"] != participant.identity
                 ]
+                
+                # Remove from participant identities tracking
+                if room_name in self.participant_identities:
+                    if participant.identity in self.participant_identities[room_name]:
+                        del self.participant_identities[room_name][participant.identity]
                 
                 await self.update_room_activity(room_name)
                 
@@ -359,6 +372,57 @@ class SIPCallRouter:
                 "sip_participants": 0,
                 "error": str(e)
             }
+    
+    async def get_participant_identity(self, room_name: str, identity: str) -> Optional[Dict[str, Any]]:
+        """Get participant information by identity for warm transfers.
+        
+        Args:
+            room_name: Name of the room
+            identity: Participant identity to look up
+            
+        Returns:
+            Participant information or None if not found
+        """
+        try:
+            if room_name in self.participant_identities:
+                return self.participant_identities[room_name].get(identity)
+            return None
+        except Exception as e:
+            logger.error(f"Error getting participant identity: {e}")
+            return None
+    
+    async def get_employee_identity(self, room_name: str) -> Optional[str]:
+        """Get the employee identity from a consultation room.
+        
+        Args:
+            room_name: Name of the consultation room
+            
+        Returns:
+            Employee identity or None if not found
+        """
+        try:
+            if room_name in self.participant_identities:
+                # Look for employee/supervisor identity
+                for identity, info in self.participant_identities[room_name].items():
+                    if identity.lower() in ["supervisor", "employee"] or "employee" in identity.lower():
+                        return identity
+            return None
+        except Exception as e:
+            logger.error(f"Error getting employee identity: {e}")
+            return None
+    
+    async def cleanup_participant_identities(self, room_name: str) -> None:
+        """Clean up participant identities for a room.
+        
+        Args:
+            room_name: Name of the room to clean up
+        """
+        try:
+            if room_name in self.participant_identities:
+                del self.participant_identities[room_name]
+                logger.info(f"Cleaned up participant identities for room: {room_name}")
+        except Exception as e:
+            logger.error(f"Error cleaning up participant identities: {e}")
 
 # Global instance
 sip_call_router = SIPCallRouter()
